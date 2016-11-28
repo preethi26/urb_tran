@@ -81,7 +81,8 @@ def algo():
     
     rows1 = db(db.schedule.destination==destination_).select()
     if(len(rows1)==0):
-        db.schedule.insert ( destination =destination_ ,status= 'pending',date_=date1 , people=0 , slot =slot_  )
+        for i in range(1,12):
+            db.schedule.insert ( destination =destination_ ,status= 'pending',date_=date1 , people=0 , slot = i  )
         
         
     rows = db(db.schedule.destination == destination_ and db.schedule.date_==date1 and db.schedule.slot==slot_ ).select()
@@ -91,7 +92,8 @@ def algo():
         elif (row.status == 'pending' and row.number + number_ >= 10):
             db(db.schedule.id == row.id).update(people = people+number )
             db(db.schedule.id == row.id).update(status ='confirmed' )
-    db.schedule.insert ( destination =destination_ ,status= 'pending',date_=date1 , people=number_ , slot =slot_  )
+        elif(row.status =='confirmed' and row.number + number_ >30):
+            db.schedule.insert ( destination =destination_ ,status= 'pending',date_=date1 , people=number_ , slot =slot_  )
 
     
     
