@@ -32,4 +32,4 @@ response.menu = [
     (T('Home'), False, URL('default', 'index'), [])
 ]
 response.menu.append((T('time-people'),False,URL('default','graphs_time'),[]))
-response.menu.append((T('place-people'),False,URL('default','graphs-place'),[]))
+response.menu.append((T('place-people'),False,URL('default','graphs_place'),[]))
