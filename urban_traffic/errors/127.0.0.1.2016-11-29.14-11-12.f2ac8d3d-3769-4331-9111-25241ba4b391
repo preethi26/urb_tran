@@ -1,0 +1,799 @@
+(dp1
+S'output'
+p2
+S"<type 'exceptions.ValueError'> invalid literal for long() with base 10: '8_00AM-9_00AM'"
+p3
+sS'layer'
+p4
+S'/home/preethi/Downloads/web2py/applications/urbtran/controllers/default.py'
+p5
+sS'code'
+p6
+S'import json\nimport datetime\ndef index():\n    form=SQLFORM.factory(Field(\'date\',\'date\'),\n                    Field(\'place\',\'string\',requires =IS_IN_SET([\'Chennai\' , \'Tirupathi\',\'Nellore\' ,\'Gudur\' , \'Sri Kalahasti\'] ) ))\n    if form.process().accepted:\n        redirect(URL(\'schedule\', vars=dict( a=form.vars.date, b = form.vars.place )  ))\n        \n    return locals()\n\ndef graph():\n    destination = str(request.args[0])\n    rows = db(db.user_data.dest==destination).select(orderby=db.user_data.time_stamp)\n    data = list()\n    for i in range(24):\n        data.append([i,0])\n    for row in rows:\n        timestring = str(row.time_stamp)\n        print timestring\n        hour = int(timestring.split(\':\')[0])\n        print "hour = " , hour\n        data[hour][1] = data[hour][1] + 1\n    \n    return locals()\n    \ndef recieve():\n    import datetime\n    import time\n    time =  datetime.datetime.now().time()\n    latitude = request.vars.latitude\n    longitude = request.vars.longitude\n    db.user_data.insert(latitude=latitude,longitude=longitude,time_stamp=time)\n    return locals()\n\ndef user():\n    """\n    exposes:\n    http://..../[app]/default/user/login\n    http://..../[app]/default/user/logout\n    http://..../[app]/default/user/register\n    http://..../[app]/default/user/profile\n    http://..../[app]/default/user/retrieve_password\n    http://..../[app]/default/user/change_password\n    http://..../[app]/default/user/bulk_register\n    use @auth.requires_login()\n        @auth.requires_membership(\'group name\')\n        @auth.requires_permission(\'read\',\'table name\',record_id)\n    to decorate functions that need access control\n    also notice there is http://..../[app]/appadmin/manage/auth to allow administrator to manage users\n    """\n    return dict(form=auth())\n\n\n\n\ndef graphs_time():\n    print "**********"\n    data=[[0,0],[1,0],[2,0],[3,0],[4,0],[5,0],[6,0],[7,0],[8,0],[9,0],[10,0],[11,0],[12,0],]\n    \n    rows = db(db.schedule.id>0).select()\n    for row in rows:\n        data[row.slot][1] = data[row.slot][1] + row.people\n        \n        print data[row.slot]\n    for i in range(1,12):\n        a = data[i][1]\n        a = str(a).strip(\'L\')\n        data[i][1] = int(a)\n    return locals()\n\n\ndef graphs_place():\n    print "$$$$$$$$$$$$$$"\n    #dados_chart="[{name: \'Batata\', y: },{name: \'Tomate\', y: },{name: \'Mam\xc3\xa3o\', y: }]" #Change this dynamically\n    places = {}\n    rows = db(db.schedule.id>0).select()\n    for row in rows:\n        a = row.people\n        a = str(a).strip(\'L\')\n        row.people = int(a)\n        if places.has_key(row.destination):\n            places[row.destination] = places[row.destination] + row.people\n        else:\n            places.update({row.destination: row.people})\n    \n    temp = places.items()\n    print temp\n    dados_chart = ""\n    \n    # forming the dados chart in the required format\n    for i in range(0,len(temp)):\n        temp1 = {}\n        temp1.update({ \'name\' : temp[i][0]})\n        print "a"\n        temp1.update({ \'y\' : temp[i][1]})\n        temp1 = str(temp1)\n        print temp1\n        \n        temp2 = temp1.split(\',\')\n        a = temp2[0][2:3] + temp2[0][4:len(temp2[0])]\n        b = temp2[1][2:6] + temp2[1][7:len(temp2[1])-1]\n        \n        temp1 = "{" + b + "," + " " + a + "}"\n        \n        \n        dados_chart = dados_chart + temp1\n    dados_chart = "[" + dados_chart + "]"\n    print dados_chart\n\n        \n    \n    dados_map={}\n    dados_map["dados"]=dados_chart\n    chart="""\n    <script type="text/javascript">\n    Highcharts.setOptions({\n        lang:{\n        downloadJPEG: "Download em imagem JPG",\n        downloadPDF: "Download em documento PDF",\n        downloadPNG: "Download em imagem PNG",\n        downloadSVG: "Download em vetor SVG",\n        loading: "Lendo...",\n        noData: "Sem dados para mostrar",\n        printChart: "Imprimir Gr\xc3\xa1fico",\n        }\n        });\n\n            // Build the chart\n            $(\'#chart\').highcharts({\n                chart: {\n                    plotBackgroundColor: null,\n                    plotBorderWidth: null,\n                    plotShadow: false,\n                    type: \'pie\'\n                },\n                title: {\n                    text: \'Meu Gr\xc3\xa1fico\'\n        },\n        tooltip: {\n            pointFormat: \'{series.name}: <b>{point.percentage:.1f}%%</b>\'\n        },\n        plotOptions: {\n            pie: {\n                allowPointSelect: true,\n                cursor: \'pointer\',\n                dataLabels: {\n                    enabled: false\n                },\n                showInLegend: true\n            }\n        },\n        credits:{enabled:false},\n        series: [{\n            name: \'Vendar por porcentagem\',\n            colorByPoint: true,\n                data: %(dados)s\n                }]\n            });\n    </script>\n    """ %dados_map\n    return dict(chart=XML(chart))\n\n\n\n\ndef schedule():\n    vars = request.get_vars\n    place = vars.b\n    date = vars.a\n    rows = db( db.schedule.destination == place and db.schedule.date_ == date    ).select()\n    data =[[0,0],[1,0],[2,0],[3,0],[4,0],[5,0],[6,0],[7,0],[8,0],[9,0],[10,0],[11,0],[12,0],]\n    for row in rows:\n        a = row.slot\n        a = str(a).strip(\'L\')\n        row.slot = int(a)\n        \n        a = row.people\n        a = str(a).strip(\'L\')\n        row.people = int(a)\n        data[row.slot][1] = data[row.slot][1] + row.people\n    rows1 = db(db.schedule.destination ==place and db.schedule.date_ == date ).select(orderby = db.schedule.slot)\n    print data\n    return locals()\n\ndef algo():\n       \n    \n    name_ = request.args(0)\n    number_ = request.args(1)\n    email_ = request.args(2)\n\n    date1 = request.args(3)\n    slot_ = request.args(4)\n    destination_ = request.args(5)\n    \n    print "^^^^^^^^^",slot_\n    \n    slot_strip = slot_.split(\'-\')[0]\n    \n    if slot_strip == \'8:00AM\':\n        slot_ = 1\n    if(slot_strip) == \'9:00AM\':\n        slot_ = 1\n    if(slot_strip) == \'10:00AM\':\n        slot_ = 2\n    if(slot_strip) == \'11:00AM\':\n        slot_ = 3\n    if(slot_strip) == \'12:00PM\':\n        slot_ = 4\n    if(slot_strip) == \'1:00PM\':\n        slot_ = 5\n    if(slot_strip) == \'2:00PM\':\n        slot_ = 6\n    if(slot_strip) == \'3:00PM\':\n        slot_ = 7\n    if(slot_strip) == \'4:00PM\':\n        slot_ = 8\n    if(slot_strip) == \'5:00PM\':\n        slot_ = 9\n    if(slot_strip) == \'6:00PM\':\n        slot_ = 10\n    if(slot_strip) == \'7:00PM\':\n        slot_ = 11\n    if(slot_strip) == \'8:00PM\':\n        slot_ = 12\n    \n    date1 = date1.split(\'-\')\n    date1 = datetime.date(int(date1[0]), int(date1[1]),int(date1[2]))\n\n   \n    db.details.insert(name = name_, email_id=email_ , destination = destination_, date_ = date1 , slot = slot_ )\n\n    rows1 = db(db.schedule.destination==destination_).select()\n    if(len(rows1)==0):\n        for i in range(1,12):\n            db.schedule.insert ( destination =destination_ ,status= \'pending\',date_=date1 , people=0 , slot = i  )\n    flag = 10\n    flag=0\n\n\n    rows = db(db.schedule.destination == destination_ and db.schedule.date_==date1 and db.schedule.slot==slot_ ).select()\n\n\n    if (flag==0):\n        for row in rows :\n        \n            number_ = int(number_)\n            if (row.status ==\'confirmed\' and row.people + number_ <=30) :\n                print "11111111111111"\n                db(db.schedule.id == row.id ).update(people = row.people+number_)\n                string = "your request has been processed successfully. you can board the bus in slot:" + str(slot_) + "to" + str(destination_)\n                flag=1\n                break\n\n\n\n\n    if flag==0:\n        for row in rows :\n            number_ = int(number_)\n\n            if (row.status == \'pending\' ):\n                print "222222222222222222"\n                if (row.people + number_ < 10):\n                    db(db.schedule.id == row.id).update(people = row.people+number_ )\n                    string = "your request has been processed successfully. you can board the bus in slot:" + str(slot_) + "to" + str(destination_) + "but the bus still needs " + str(10 - row.people + number_) + "people to get confirmed"\n                if (row.people + number_ >= 10):\n                    db(db.schedule.id == row.id).update(status =\'confirmed\' )\n                    db(db.schedule.id == row.id).update(people = row.people+number_ )\n                    string = "your request has been processed successfully. you can board the bus in slot:" + str(slot_) + "to" + str(destination_)\n                flag=1\n                break\n\n\n\n\n    if flag==0:\n        for row in rows :\n            number_ = int(number_)    \n            if(row.status ==\'confirmed\' and row.people + number_ >30):\n                print "333333333333333"\n                if (number_ < 10):\n                    db.schedule.insert ( destination =destination_ ,status= \'pending\',date_=date1 , people=number_ , slot =slot_  )\n                    string = "your request has been processed successfully. you can board the bus in slot:" + str(slot_) + "to" + str(destination_) + "but the bus still needs " + str(30 - row.people + number_) + "people to get confirmed"\n                else :\n                    db.schedule.insert ( destination =destination_ ,status= \'confirmed\',date_=date1 , people=number_ , slot =slot_  )\n                    string = "your request has been processed successfully. you can board the bus in slot:" + str(slot_) + "to" + str(destination_)\n                flag=1\n                break\n\n\n\n\n    return locals()\n\nresponse._vars=response._caller(algo)\n'
+p7
+sS'snapshot'
+p8
+(dp9
+S'exception'
+p10
+(dp11
+S'__hash__'
+p12
+S"<method-wrapper '__hash__' of exceptions.ValueError object>"
+p13
+sS'__setattr__'
+p14
+S"<method-wrapper '__setattr__' of exceptions.ValueError object>"
+p15
+sS'__reduce_ex__'
+p16
+S'<built-in method __reduce_ex__ of exceptions.ValueError object>'
+p17
+sS'__getslice__'
+p18
+S"<method-wrapper '__getslice__' of exceptions.ValueError object>"
+p19
+sS'__getitem__'
+p20
+S"<method-wrapper '__getitem__' of exceptions.ValueError object>"
+p21
+sS'__setstate__'
+p22
+S'<built-in method __setstate__ of exceptions.ValueError object>'
+p23
+sS'args'
+p24
+S'("invalid literal for long() with base 10: \'8_00AM-9_00AM\'",)'
+p25
+sS'__reduce__'
+p26
+S'<built-in method __reduce__ of exceptions.ValueError object>'
+p27
+sS'__str__'
+p28
+S"<method-wrapper '__str__' of exceptions.ValueError object>"
+p29
+sS'__format__'
+p30
+S'<built-in method __format__ of exceptions.ValueError object>'
+p31
+sS'__getattribute__'
+p32
+S"<method-wrapper '__getattribute__' of exceptions.ValueError object>"
+p33
+sS'__class__'
+p34
+S"<type 'exceptions.ValueError'>"
+p35
+sS'__unicode__'
+p36
+S'<built-in method __unicode__ of exceptions.ValueError object>'
+p37
+sS'__delattr__'
+p38
+S"<method-wrapper '__delattr__' of exceptions.ValueError object>"
+p39
+sS'__subclasshook__'
+p40
+S'<built-in method __subclasshook__ of type object>'
+p41
+sS'__repr__'
+p42
+S"<method-wrapper '__repr__' of exceptions.ValueError object>"
+p43
+sS'__dict__'
+p44
+S'{}'
+p45
+sS'__sizeof__'
+p46
+S'<built-in method __sizeof__ of exceptions.ValueError object>'
+p47
+sS'__doc__'
+p48
+S"'Inappropriate argument value (of correct type).'"
+p49
+sS'__init__'
+p50
+S"<method-wrapper '__init__' of exceptions.ValueError object>"
+p51
+sS'__new__'
+p52
+S'<built-in method __new__ of type object>'
+p53
+ssS'evalue'
+p54
+S"invalid literal for long() with base 10: '8_00AM-9_00AM'"
+p55
+sS'request'
+p56
+cgluon.html
+XML_unpickle
+p57
+(S's\x0fu\x00\x00<div><table><tr><td style="font-weight:bold;vertical-align:top;">ajax</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">application</td><td style="vertical-align:top;">:</td><td><div>urbtran</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">args</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>foggy</div></td></tr><tr><td><div>6</div></td></tr><tr><td><div>agh@gmail</div></td></tr><tr><td><div>2016-11-29</div></td></tr><tr><td><div>8_00AM-9_00AM</div></td></tr><tr><td><div>Chennai</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cid</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">client</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">controller</td><td style="vertical-align:top;">:</td><td><div>default</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cookies</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">session_id_admin</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1-87a4d0aa-b6a4-41fc-a173-782205f5e4d5<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_id_room_booking</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1-afc8e205-3154-45dd-b217-6e13f30c9866<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_id_sniffer</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1-1f0ea9be-974d-49e5-ba1a-53d04f61832b<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_id_urban_traffic</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1-21af744e-3481-4b30-8c6f-8abd1102b22a<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_id_urban_traffic_new</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1-d83bc386-92eb-4266-987e-71f9d39271a3<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_id_urbtran</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1-4f3fe364-a427-4644-9feb-c0f60f95f4e0<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_id_welcome</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1-35403275-12ea-4614-ab6b-58f39ce522cd<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">env</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">HTTP_ACCEPT</td><td style="vertical-align:top;">:</td><td><div>text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_ACCEPT_ENCODING</td><td style="vertical-align:top;">:</td><td><div>gzip, deflate, sdch</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_ACCEPT_LANGUAGE</td><td style="vertical-align:top;">:</td><td><div>en-US,en;q=0.8</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_CACHE_CONTROL</td><td style="vertical-align:top;">:</td><td><div>max-age=0</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_CONNECTION</td><td style="vertical-align:top;">:</td><td><div>keep-alive</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_COOKIE</td><td style="vertical-align:top;">:</td><td><div>session_id_welcome=127.0.0.1-35403275-12ea-4614-ab6b-58f39ce522cd; session_id_urban_traffic_new=127.0.0.1-d83bc386-92eb-4266-987e-71f9d39271a3; session_id_urban_traffic=127.0.0.1-21af744e-3481-4b30-8c6f-8abd1102b22a; session_id_room_booking=127.0.0.1-afc8e205-3154-45dd-b217-6e13f30c9866; session_id_sniffer=127.0.0.1-1f0ea9be-974d-49e5-ba1a-53d04f61832b; session_id_urbtran=127.0.0.1-4f3fe364-a427-4644-9feb-c0f60f95f4e0; session_id_admin=127.0.0.1-87a4d0aa-b6a4-41fc-a173-782205f5e4d5</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_HOST</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1:8000</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_UPGRADE_INSECURE_REQUESTS</td><td style="vertical-align:top;">:</td><td><div>1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_USER_AGENT</td><td style="vertical-align:top;">:</td><td><div>Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.143 Safari/537.36</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">PATH_INFO</td><td style="vertical-align:top;">:</td><td><div>/urbtran/default/algo/foggy/6/agh@gmail/2016-11-29/8:00AM-9:00AM/Chennai</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">QUERY_STRING</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">REMOTE_ADDR</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">REMOTE_PORT</td><td style="vertical-align:top;">:</td><td><div>55264</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">REQUEST_METHOD</td><td style="vertical-align:top;">:</td><td><div>GET</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SCRIPT_NAME</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SERVER_NAME</td><td style="vertical-align:top;">:</td><td><div>preethi-SVE1512J6EB</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SERVER_PORT</td><td style="vertical-align:top;">:</td><td><div>8000</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SERVER_PROTOCOL</td><td style="vertical-align:top;">:</td><td><div>HTTP/1.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SERVER_SOFTWARE</td><td style="vertical-align:top;">:</td><td><div>Rocket 1.2.6</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">app_folders</td><td style="vertical-align:top;">:</td><td><div>set([&#x27;/home/preethi/Downloads/web2py/applications/urban_traffic/&#x27;, &#x27;/home/preethi/Downloads/web2py/applications/urbtran/&#x27;, &#x27;/home/preethi/Downloads/web2py/applications/admin/&#x27;, &#x27;/home/preethi/Downloads/web2py/applications/sniffer/&#x27;, &#x27;/home/preethi/Downloads/web2py/applications/room_booking/&#x27;, &#x27;/home/preethi/Downloads/web2py/applications/urban_traffic_new/&#x27;, &#x27;/home/preethi/Downloads/web2py/applications/welcome/&#x27;])</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">applications_parent</td><td style="vertical-align:top;">:</td><td><div>/home/preethi/Downloads/web2py</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cmd_args</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cmd_options</td><td style="vertical-align:top;">:</td><td><div>&lt;Values at 0x7f56f846fcb0: {&#x27;verbose&#x27;: False, &#x27;ip&#x27;: &#x27;127.0.0.1&#x27;, &#x27;debuglevel&#x27;: 30, &#x27;with_scheduler&#x27;: False, &#x27;shutdown_timeout&#x27;: 5, &#x27;taskbar&#x27;: False, &#x27;with_coverage&#x27;: False, &#x27;pid_filename&#x27;: &#x27;httpserver.pid&#x27;, &#x27;maxthreads&#x27;: None, &#x27;softcron&#x27;: False, &#x27;server_name&#x27;: &#x27;preethi-SVE1512J6EB&#x27;, &#x27;bpython&#x27;: False, &#x27;nogui&#x27;: False, &#x27;port&#x27;: 8000, &#x27;print_errors&#x27;: False, &#x27;extcron&#x27;: False, &#x27;runcron&#x27;: False, &#x27;run_system_tests&#x27;: False, &#x27;test&#x27;: None, &#x27;folder&#x27;: &#x27;/home/preethi/Downloads/web2py&#x27;, &#x27;config&#x27;: &#x27;&#x27;, &#x27;minthreads&#x27;: None, &#x27;shell&#x27;: None, &#x27;run&#x27;: &#x27;&#x27;, &#x27;log_filename&#x27;: &#x27;httpserver.log&#x27;, &#x27;profiler_dir&#x27;: None, &#x27;args&#x27;: [&#x27;&#x27;], &#x27;socket_timeout&#x27;: 5, &#x27;ssl_ca_certificate&#x27;: None, &#x27;scheduler&#x27;: None, &#x27;interfaces&#x27;: None, &#x27;ssl_private_key&#x27;: &#x27;&#x27;, &#x27;gae&#x27;: None, &#x27;password&#x27;: &#x27;******&#x27;, &#x27;request_queue_size&#x27;: 5, &#x27;ssl_certificate&#x27;: &#x27;&#x27;, &#x27;cronjob&#x27;: False, &#x27;numthreads&#x27;: None, &#x27;quiet&#x27;: False, &#x27;import_models&#x27;: False, &#x27;timeout&#x27;: 10, &#x27;plain&#x27;: False, &#x27;nobanner&#x27;: False}&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">db_sessions</td><td style="vertical-align:top;">:</td><td><div>set([])</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">debugging</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">gluon_parent</td><td style="vertical-align:top;">:</td><td><div>/home/preethi/Downloads/web2py</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_accept</td><td style="vertical-align:top;">:</td><td><div>text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_accept_encoding</td><td style="vertical-align:top;">:</td><td><div>gzip, deflate, sdch</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_accept_language</td><td style="vertical-align:top;">:</td><td><div>en-US,en;q=0.8</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_cache_control</td><td style="vertical-align:top;">:</td><td><div>max-age=0</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_connection</td><td style="vertical-align:top;">:</td><td><div>keep-alive</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_cookie</td><td style="vertical-align:top;">:</td><td><div>session_id_welcome=127.0.0.1-35403275-12ea-4614-ab6b-58f39ce522cd; session_id_urban_traffic_new=127.0.0.1-d83bc386-92eb-4266-987e-71f9d39271a3; session_id_urban_traffic=127.0.0.1-21af744e-3481-4b30-8c6f-8abd1102b22a; session_id_room_booking=127.0.0.1-afc8e205-3154-45dd-b217-6e13f30c9866; session_id_sniffer=127.0.0.1-1f0ea9be-974d-49e5-ba1a-53d04f61832b; session_id_urbtran=127.0.0.1-4f3fe364-a427-4644-9feb-c0f60f95f4e0; session_id_admin=127.0.0.1-87a4d0aa-b6a4-41fc-a173-782205f5e4d5</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_host</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1:8000</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_upgrade_insecure_requests</td><td style="vertical-align:top;">:</td><td><div>1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_user_agent</td><td style="vertical-align:top;">:</td><td><div>Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.143 Safari/537.36</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_jython</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_pypy</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_source</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">local_hosts</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>::1</div></td></tr><tr><td><div>127.0.1.1</div></td></tr><tr><td><div>::ffff:127.0.0.1</div></td></tr><tr><td><div>127.0.0.1</div></td></tr><tr><td><div>preethi-SVE1512J6EB</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path_info</td><td style="vertical-align:top;">:</td><td><div>/urbtran/default/algo/foggy/6/agh@gmail/2016-11-29/8:00AM-9:00AM/Chennai</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">query_string</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">remote_addr</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">remote_port</td><td style="vertical-align:top;">:</td><td><div>55264</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">request_method</td><td style="vertical-align:top;">:</td><td><div>GET</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">request_uri</td><td style="vertical-align:top;">:</td><td><div>/urbtran/default/algo/foggy/6/agh@gmail/2016-11-29/8:00AM-9:00AM/Chennai</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">script_name</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">server_name</td><td style="vertical-align:top;">:</td><td><div>preethi-SVE1512J6EB</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">server_port</td><td style="vertical-align:top;">:</td><td><div>8000</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">server_protocol</td><td style="vertical-align:top;">:</td><td><div>HTTP/1.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">server_software</td><td style="vertical-align:top;">:</td><td><div>Rocket 1.2.6</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">web2py_path</td><td style="vertical-align:top;">:</td><td><div>/home/preethi/Downloads/web2py</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">web2py_version</td><td style="vertical-align:top;">:</td><td><div>2.14.6-stable+timestamp.2016.05.10.00.21.47</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.errors</td><td style="vertical-align:top;">:</td><td><div>&lt;open file &#x27;&lt;stderr&gt;&#x27;, mode &#x27;w&#x27; at 0x7f56ff8ec1e0&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.file_wrapper</td><td style="vertical-align:top;">:</td><td><div>&lt;class wsgiref.util.FileWrapper at 0x7f56f850f8d8&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.input</td><td style="vertical-align:top;">:</td><td><div>&lt;socket._fileobject object at 0x7f56f8458cd0&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.multiprocess</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.multithread</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.run_once</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.url_scheme</td><td style="vertical-align:top;">:</td><td><div>http</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.version</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>1</div></td></tr><tr><td><div>0</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_errors</td><td style="vertical-align:top;">:</td><td><div>&lt;open file &#x27;&lt;stderr&gt;&#x27;, mode &#x27;w&#x27; at 0x7f56ff8ec1e0&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_file_wrapper</td><td style="vertical-align:top;">:</td><td><div>&lt;class wsgiref.util.FileWrapper at 0x7f56f850f8d8&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_input</td><td style="vertical-align:top;">:</td><td><div>&lt;socket._fileobject object at 0x7f56f8458cd0&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_multiprocess</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_multithread</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_run_once</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_url_scheme</td><td style="vertical-align:top;">:</td><td><div>http</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_version</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>1</div></td></tr><tr><td><div>0</div></td></tr></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">extension</td><td style="vertical-align:top;">:</td><td><div>html</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">folder</td><td style="vertical-align:top;">:</td><td><div>/home/preethi/Downloads/web2py/applications/urbtran/</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">function</td><td style="vertical-align:top;">:</td><td><div>algo</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">global_settings</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">app_folders</td><td style="vertical-align:top;">:</td><td><div>set([&#x27;/home/preethi/Downloads/web2py/applications/urban_traffic/&#x27;, &#x27;/home/preethi/Downloads/web2py/applications/urbtran/&#x27;, &#x27;/home/preethi/Downloads/web2py/applications/admin/&#x27;, &#x27;/home/preethi/Downloads/web2py/applications/sniffer/&#x27;, &#x27;/home/preethi/Downloads/web2py/applications/room_booking/&#x27;, &#x27;/home/preethi/Downloads/web2py/applications/urban_traffic_new/&#x27;, &#x27;/home/preethi/Downloads/web2py/applications/welcome/&#x27;])</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">applications_parent</td><td style="vertical-align:top;">:</td><td><div>/home/preethi/Downloads/web2py</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cmd_args</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cmd_options</td><td style="vertical-align:top;">:</td><td><div>&lt;Values at 0x7f56f846fcb0: {&#x27;verbose&#x27;: False, &#x27;ip&#x27;: &#x27;127.0.0.1&#x27;, &#x27;debuglevel&#x27;: 30, &#x27;with_scheduler&#x27;: False, &#x27;shutdown_timeout&#x27;: 5, &#x27;taskbar&#x27;: False, &#x27;with_coverage&#x27;: False, &#x27;pid_filename&#x27;: &#x27;httpserver.pid&#x27;, &#x27;maxthreads&#x27;: None, &#x27;softcron&#x27;: False, &#x27;server_name&#x27;: &#x27;preethi-SVE1512J6EB&#x27;, &#x27;bpython&#x27;: False, &#x27;nogui&#x27;: False, &#x27;port&#x27;: 8000, &#x27;print_errors&#x27;: False, &#x27;extcron&#x27;: False, &#x27;runcron&#x27;: False, &#x27;run_system_tests&#x27;: False, &#x27;test&#x27;: None, &#x27;folder&#x27;: &#x27;/home/preethi/Downloads/web2py&#x27;, &#x27;config&#x27;: &#x27;&#x27;, &#x27;minthreads&#x27;: None, &#x27;shell&#x27;: None, &#x27;run&#x27;: &#x27;&#x27;, &#x27;log_filename&#x27;: &#x27;httpserver.log&#x27;, &#x27;profiler_dir&#x27;: None, &#x27;args&#x27;: [&#x27;&#x27;], &#x27;socket_timeout&#x27;: 5, &#x27;ssl_ca_certificate&#x27;: None, &#x27;scheduler&#x27;: None, &#x27;interfaces&#x27;: None, &#x27;ssl_private_key&#x27;: &#x27;&#x27;, &#x27;gae&#x27;: None, &#x27;password&#x27;: &#x27;******&#x27;, &#x27;request_queue_size&#x27;: 5, &#x27;ssl_certificate&#x27;: &#x27;&#x27;, &#x27;cronjob&#x27;: False, &#x27;numthreads&#x27;: None, &#x27;quiet&#x27;: False, &#x27;import_models&#x27;: False, &#x27;timeout&#x27;: 10, &#x27;plain&#x27;: False, &#x27;nobanner&#x27;: False}&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">db_sessions</td><td style="vertical-align:top;">:</td><td><div>set([])</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">debugging</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">gluon_parent</td><td style="vertical-align:top;">:</td><td><div>/home/preethi/Downloads/web2py</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_jython</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_pypy</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_source</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">local_hosts</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>::1</div></td></tr><tr><td><div>127.0.1.1</div></td></tr><tr><td><div>::ffff:127.0.0.1</div></td></tr><tr><td><div>127.0.0.1</div></td></tr><tr><td><div>preethi-SVE1512J6EB</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">web2py_version</td><td style="vertical-align:top;">:</td><td><div>2.14.6-stable+timestamp.2016.05.10.00.21.47</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_https</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_local</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_restful</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_scheduler</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_shell</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">now</td><td style="vertical-align:top;">:</td><td><div>datetime.datetime(2016, 11, 29, 14, 11, 12, 124533)</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">raw_args</td><td style="vertical-align:top;">:</td><td><div>foggy/6/agh@gmail/2016-11-29/8:00AM-9:00AM/Chennai</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">raw_extension</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">url</td><td style="vertical-align:top;">:</td><td><div>/urbtran/default/algo/foggy/6/agh@gmail/2016-11-29/8:00AM-9:00AM/Chennai</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">utcnow</td><td style="vertical-align:top;">:</td><td><div>datetime.datetime(2016, 11, 29, 8, 41, 12, 124562)</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi</td><td style="vertical-align:top;">:</td><td><div>&lt;gluon.main.LazyWSGI object at 0x7f56bb1991d0&gt;</div></td></tr></table></div>'
+tRp58
+sS'frames'
+p59
+(lp60
+(dp61
+S'file'
+p62
+S'/home/preethi/Downloads/web2py/gluon/restricted.py'
+p63
+sS'dump'
+p64
+(dp65
+S'environment'
+p66
+S"{'A': <class 'gluon.html.A'>, 'ANY_OF': <class 'gluon.validators.ANY_OF'>, 'ASSIGNJS': <function ASSIGNJS>, 'AppConfig': <function AppConfig>, 'Auth': <class 'gluon.tools.Auth'>, 'B': <class 'gluon.html.B'>, 'BEAUTIFY': <class 'gluon.html.BEAUTIFY'>, 'BODY': <class 'gluon.html.BODY'>, 'BR': <class 'gluon.html.BR'>, 'BUTTON': <class 'gluon.html.BUTTON'>, ...}"
+p67
+sS'ccode'
+p68
+S'<code object <module> at 0x7f56fd6061b0, file "/...ications/urbtran/controllers/default.py", line 1>'
+p69
+ssS'lnum'
+p70
+I227
+sS'lines'
+p71
+(dp72
+I224
+S'            ccode = code'
+p73
+sI225
+S'        else:'
+p74
+sI226
+S'            ccode = compile2(code, layer)'
+p75
+sI227
+S'        exec ccode in environment'
+p76
+sI228
+S'    except HTTP:'
+p77
+sI229
+S'        raise'
+p78
+sI230
+S'    except RestrictedError:'
+p79
+sI231
+S'        # do not encapsulate (obfuscate) the original RestrictedError'
+p80
+sI222
+S'    try:'
+p81
+sI223
+S'        if isinstance(code, types.CodeType):'
+p82
+ssS'call'
+p83
+S"(code='import json\\nimport datetime\\ndef index():\\n    for... locals()\\n\\nresponse._vars=response._caller(algo)\\n', environment={'A': <class 'gluon.html.A'>, 'ANY_OF': <class 'gluon.validators.ANY_OF'>, 'ASSIGNJS': <function ASSIGNJS>, 'AppConfig': <function AppConfig>, 'Auth': <class 'gluon.tools.Auth'>, 'B': <class 'gluon.html.B'>, 'BEAUTIFY': <class 'gluon.html.BEAUTIFY'>, 'BODY': <class 'gluon.html.BODY'>, 'BR': <class 'gluon.html.BR'>, 'BUTTON': <class 'gluon.html.BUTTON'>, ...}, layer='/home/preethi/Downloads/web2py/applications/urbtran/controllers/default.py')"
+p84
+sS'func'
+p85
+S'restricted'
+p86
+sa(dp87
+g62
+S'/home/preethi/Downloads/web2py/applications/urbtran/controllers/default.py'
+p88
+sg64
+(dp89
+sg70
+I296
+sg71
+(dp90
+I288
+S'                flag=1'
+p91
+sI289
+S'                break'
+p92
+sI290
+S''
+sI291
+S''
+sI292
+S''
+sI293
+S''
+sI294
+S'    return locals()'
+p93
+sI285
+S'                else :'
+p94
+sI286
+S"                    db.schedule.insert ( destination =destination_ ,status= 'confirmed',date_=date1 , people=number_ , slot =slot_  )"
+p95
+sI287
+S'                    string = "your request has been processed successfully. you can board the bus in slot:" + str(slot_) + "to" + str(destination_)'
+p96
+ssg83
+S'()'
+p97
+sg85
+S'<module>'
+p98
+sa(dp99
+g62
+S'/home/preethi/Downloads/web2py/gluon/globals.py'
+p100
+sg64
+(dp101
+S'self'
+p102
+S'undefined'
+p103
+sS'f'
+S'<function algo>'
+p104
+ssg70
+I417
+sg71
+(dp105
+I416
+S'        self._vars = None'
+p106
+sI417
+S'        self._caller = lambda f: f()'
+p107
+sI418
+S'        self._view_environment = None'
+p108
+sI419
+S'        self._custom_commit = None'
+p109
+sI420
+S'        self._custom_rollback = None'
+p110
+sI421
+S"        self.generic_patterns = ['*']"
+p111
+sI412
+S"        self.flash = ''            # used by the default view layout"
+p112
+sI413
+S'        self.meta = Storage()      # used by web2py_ajax.html'
+p113
+sI414
+S'        self.menu = []             # used by the default view layout'
+p114
+sI415
+S'        self.files = []            # used by web2py_ajax.html'
+p115
+ssg83
+S'(f=<function algo>)'
+p116
+sg85
+S'<lambda>'
+p117
+sa(dp118
+g62
+S'/home/preethi/Downloads/web2py/applications/urbtran/controllers/default.py'
+p119
+sg64
+(dp120
+S'date1'
+p121
+S'datetime.date(2016, 11, 29)'
+p122
+sS'slot'
+p123
+g103
+sS'db.details.insert'
+p124
+S'<bound method Table.insert of <Table details (id, name, email_id, destination, date_, slot)>>'
+p125
+sS'db.details'
+p126
+S'<Table details (id, name, email_id, destination, date_, slot)>'
+p127
+sS'name'
+p128
+g103
+sS'email_id'
+p129
+g103
+sS'destination'
+p130
+g103
+sS'date_'
+p131
+g103
+sS'email_'
+p132
+S"'agh@gmail'"
+p133
+sS'destination_'
+p134
+S"'Chennai'"
+p135
+sS'slot_'
+p136
+S"'8_00AM-9_00AM'"
+p137
+sS'global db'
+p138
+S'<DAL uri="sqlite://storage.sqlite">'
+p139
+sS'name_'
+p140
+S"'foggy'"
+p141
+ssg70
+I231
+sg71
+(dp142
+I226
+S''
+sI227
+S"    date1 = date1.split('-')"
+p143
+sI228
+S'    date1 = datetime.date(int(date1[0]), int(date1[1]),int(date1[2]))'
+p144
+sI229
+S''
+sI230
+S''
+sI231
+S'    db.details.insert(name = name_, email_id=email_ , destination = destination_, date_ = date1 , slot = slot_ )'
+p145
+sI232
+S''
+sI233
+S'    rows1 = db(db.schedule.destination==destination_).select()'
+p146
+sI234
+S'    if(len(rows1)==0):'
+p147
+sI235
+S'        for i in range(1,12):'
+p148
+ssg83
+S'()'
+p149
+sg85
+S'algo'
+p150
+sa(dp151
+g62
+S'/home/preethi/Downloads/web2py/gluon/packages/dal/pydal/objects.py'
+p152
+sg64
+(dp153
+S'self._listify'
+p154
+S'<bound method Table._listify of <Table details (id, name, email_id, destination, date_, slot)>>'
+p155
+sS'fields'
+p156
+S"{'date_': datetime.date(2016, 11, 29), 'destination': 'Chennai', 'email_id': 'agh@gmail', 'name': 'foggy', 'slot': '8_00AM-9_00AM'}"
+p157
+sS'self'
+p158
+S'<Table details (id, name, email_id, destination, date_, slot)>'
+p159
+sS'ret'
+p160
+g103
+sS'self._db._adapter'
+p161
+S'<pydal.adapters.sqlite.SQLiteAdapter object>'
+p162
+sS'self._db._adapter.insert'
+p163
+S'<bound method SQLiteAdapter.insert of <pydal.adapters.sqlite.SQLiteAdapter object>>'
+p164
+sS'self._db'
+p165
+S'<DAL uri="sqlite://storage.sqlite">'
+p166
+ssg70
+I726
+sg71
+(dp167
+I721
+S'    def insert(self, **fields):'
+p168
+sI722
+S'        fields = self._defaults(fields)'
+p169
+sI723
+S'        self._attempt_upload(fields)'
+p170
+sI724
+S'        if any(f(fields) for f in self._before_insert):'
+p171
+sI725
+S'            return 0'
+p172
+sI726
+S'        ret = self._db._adapter.insert(self, self._listify(fields))'
+p173
+sI727
+S'        if ret and self._after_insert:'
+p174
+sI728
+S'            fields = Row(fields)'
+p175
+sI729
+S'            [f(fields, ret) for f in self._after_insert]'
+p176
+sI730
+S'        return ret'
+p177
+ssg83
+S"(self=<Table details (id, name, email_id, destination, date_, slot)>, **fields={'date_': datetime.date(2016, 11, 29), 'destination': 'Chennai', 'email_id': 'agh@gmail', 'name': 'foggy', 'slot': '8_00AM-9_00AM'})"
+p178
+sg85
+S'insert'
+p179
+sa(dp180
+g62
+S'/home/preethi/Downloads/web2py/gluon/packages/dal/pydal/adapters/base.py'
+p181
+sg64
+(dp182
+S'self._insert'
+p183
+S'<bound method SQLiteAdapter._insert of <pydal.adapters.sqlite.SQLiteAdapter object>>'
+p184
+sS'query'
+p185
+g103
+sS'self'
+p186
+S'<pydal.adapters.sqlite.SQLiteAdapter object>'
+p187
+sS'fields'
+p188
+S"[(<pydal.objects.Field object>, 'agh@gmail'), (<pydal.objects.Field object>, '8_00AM-9_00AM'), (<pydal.objects.Field object>, 'Chennai'), (<pydal.objects.Field object>, 'foggy'), (<pydal.objects.Field object>, datetime.date(2016, 11, 29))]"
+p189
+sS'table'
+p190
+S'<Table details (id, name, email_id, destination, date_, slot)>'
+p191
+ssg70
+I739
+sg71
+(dp192
+I736
+S"        return 'INSERT INTO %s DEFAULT VALUES;' % (table.sqlsafe)"
+p193
+sI737
+S''
+sI738
+S'    def insert(self, table, fields):'
+p194
+sI739
+S'        query = self._insert(table,fields)'
+p195
+sI740
+S'        try:'
+p196
+sI741
+S'            self.execute(query)'
+p197
+sI742
+S'        except Exception:'
+p198
+sI743
+S'            e = sys.exc_info()[1]'
+p199
+sI734
+S''
+sI735
+S'    def _insert_empty(self, table):'
+p200
+ssg83
+S"(self=<pydal.adapters.sqlite.SQLiteAdapter object>, table=<Table details (id, name, email_id, destination, date_, slot)>, fields=[(<pydal.objects.Field object>, 'agh@gmail'), (<pydal.objects.Field object>, '8_00AM-9_00AM'), (<pydal.objects.Field object>, 'Chennai'), (<pydal.objects.Field object>, 'foggy'), (<pydal.objects.Field object>, datetime.date(2016, 11, 29))])"
+p201
+sg85
+g179
+sa(dp202
+g62
+S'/home/preethi/Downloads/web2py/gluon/packages/dal/pydal/adapters/base.py'
+p203
+sg64
+(dp204
+S'f'
+g103
+sS'fields'
+p205
+S"[(<pydal.objects.Field object>, 'agh@gmail'), (<pydal.objects.Field object>, '8_00AM-9_00AM'), (<pydal.objects.Field object>, 'Chennai'), (<pydal.objects.Field object>, 'foggy'), (<pydal.objects.Field object>, datetime.date(2016, 11, 29))]"
+p206
+sS'self'
+p207
+S'<pydal.adapters.sqlite.SQLiteAdapter object>'
+p208
+sS'values'
+p209
+g103
+sS'v'
+g103
+sS'self.expand'
+p210
+S'<bound method SQLiteAdapter.expand of <pydal.adapters.sqlite.SQLiteAdapter object>>'
+p211
+ssg70
+I730
+sg71
+(dp212
+I725
+S''
+sI726
+S'    def _insert(self, table, fields):'
+p213
+sI727
+S'        table_rname = table.sqlsafe'
+p214
+sI728
+S'        if fields:'
+p215
+sI729
+S"            keys = ','.join(f.sqlsafe_name for f, v in fields)"
+p216
+sI730
+S"            values = ','.join(self.expand(v, f.type) for f, v in fields)"
+p217
+sI731
+S"            return 'INSERT INTO %s(%s) VALUES (%s);' % (table_rname, keys, values)"
+p218
+sI732
+S'        else:'
+p219
+sI733
+S'            return self._insert_empty(table)'
+p220
+sI734
+S''
+ssg83
+S"(self=<pydal.adapters.sqlite.SQLiteAdapter object>, table=<Table details (id, name, email_id, destination, date_, slot)>, fields=[(<pydal.objects.Field object>, 'agh@gmail'), (<pydal.objects.Field object>, '8_00AM-9_00AM'), (<pydal.objects.Field object>, 'Chennai'), (<pydal.objects.Field object>, 'foggy'), (<pydal.objects.Field object>, datetime.date(2016, 11, 29))])"
+p221
+sg85
+S'_insert'
+p222
+sa(dp223
+g62
+S'/home/preethi/Downloads/web2py/gluon/packages/dal/pydal/adapters/base.py'
+p224
+sg64
+(dp225
+S'f'
+S'<pydal.objects.Field object>'
+p226
+sS'fields'
+p227
+g103
+sS'self'
+p228
+S'<pydal.adapters.sqlite.SQLiteAdapter object>'
+p229
+sS'f.type'
+p230
+S"'integer'"
+p231
+sS'values'
+p232
+g103
+sS'v'
+S"'8_00AM-9_00AM'"
+p233
+sS'self.expand'
+p234
+S'<bound method SQLiteAdapter.expand of <pydal.adapters.sqlite.SQLiteAdapter object>>'
+p235
+ssg70
+I730
+sg71
+(dp236
+I725
+S''
+sI726
+S'    def _insert(self, table, fields):'
+p237
+sI727
+S'        table_rname = table.sqlsafe'
+p238
+sI728
+S'        if fields:'
+p239
+sI729
+S"            keys = ','.join(f.sqlsafe_name for f, v in fields)"
+p240
+sI730
+S"            values = ','.join(self.expand(v, f.type) for f, v in fields)"
+p241
+sI731
+S"            return 'INSERT INTO %s(%s) VALUES (%s);' % (table_rname, keys, values)"
+p242
+sI732
+S'        else:'
+p243
+sI733
+S'            return self._insert_empty(table)'
+p244
+sI734
+S''
+ssg83
+S"((f=<pydal.objects.Field object>, v='8_00AM-9_00AM'))"
+p245
+sg85
+S'<genexpr>'
+p246
+sa(dp247
+g62
+S'/home/preethi/Downloads/web2py/gluon/packages/dal/pydal/adapters/base.py'
+p248
+sg64
+(dp249
+S'self.represent'
+p250
+S'<bound method SQLiteAdapter.represent of <pydal.adapters.sqlite.SQLiteAdapter object>>'
+p251
+sS'rv'
+p252
+g103
+sS'expression'
+p253
+S"'8_00AM-9_00AM'"
+p254
+sS'self'
+p255
+S'<pydal.adapters.sqlite.SQLiteAdapter object>'
+p256
+sS'field_type'
+p257
+S"'integer'"
+p258
+ssg70
+I962
+sg71
+(dp259
+I960
+S'                rv = op()'
+p260
+sI961
+S'        elif field_type:'
+p261
+sI962
+S'            rv = self.represent(expression, field_type)'
+p262
+sI963
+S'        elif isinstance(expression, (list, tuple)):'
+p263
+sI964
+S"            rv = ','.join(self.represent(item, field_type)"
+p264
+sI965
+S'                          for item in expression)'
+p265
+sI966
+S'        elif isinstance(expression, bool):'
+p266
+sI957
+S'                    op = op[:-1]'
+p267
+sI958
+S"                rv = '(%s)' % op"
+p268
+sI959
+S'            else:'
+p269
+ssg83
+S"(self=<pydal.adapters.sqlite.SQLiteAdapter object>, expression='8_00AM-9_00AM', field_type='integer', colnames=False)"
+p270
+sg85
+S'expand'
+p271
+sa(dp272
+g62
+S'/home/preethi/Downloads/web2py/gluon/packages/dal/pydal/adapters/base.py'
+p273
+sg64
+(dp274
+S'builtinstr'
+p275
+S"<type 'str'>"
+p276
+sS'global long'
+p277
+S"<type 'long'>"
+p278
+sS'obj'
+p279
+S"'8_00AM-9_00AM'"
+p280
+ssg70
+I1435
+sg71
+(dp281
+I1430
+S"            if obj and not str(obj)[:1].upper() in '0F':"
+p282
+sI1431
+S'                return self.smart_adapt(self.TRUE)'
+p283
+sI1432
+S'            else:'
+p284
+sI1433
+S'                return self.smart_adapt(self.FALSE)'
+p285
+sI1434
+S"        if fieldtype == 'id' or fieldtype == 'integer':"
+p286
+sI1435
+S'            return str(long(obj))'
+p287
+sI1436
+S"        if field_is_type('decimal'):"
+p288
+sI1437
+S'            return str(obj)'
+p289
+sI1438
+S"        elif field_is_type('reference'): # reference"
+p290
+sI1439
+S'            # check for tablename first'
+p291
+ssg83
+S"(self=<pydal.adapters.sqlite.SQLiteAdapter object>, obj='8_00AM-9_00AM', fieldtype='integer')"
+p292
+sg85
+S'represent'
+p293
+sasS'pyver'
+p294
+S'Python 2.7.6: /usr/bin/python (prefix: /usr)'
+p295
+sS'session'
+p296
+g57
+(S's9\x01\x00\x00<div><table><tr><td style="font-weight:bold;vertical-align:top;">last_orderby</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">last_query</td><td style="vertical-align:top;">:</td><td><div>db.schedule.id&gt;0</div></td></tr></table></div>'
+tRp297
+sS'etype'
+p298
+S"<type 'exceptions.ValueError'>"
+p299
+sS'date'
+p300
+S'Tue Nov 29 14:11:12 2016'
+p301
+sS'response'
+p302
+g57
+(S's\x10\x1f\x00\x00<div><table><tr><td style="font-weight:bold;vertical-align:top;">body</td><td style="vertical-align:top;">:</td><td><div>&lt;cStringIO.StringO object at 0x7f56bae59e68&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cookies</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">session_id_urbtran</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1-4f3fe364-a427-4644-9feb-c0f60f95f4e0<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div>/</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">delimiters</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>{{</div></td></tr><tr><td><div>}}</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">files</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">flash</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">form_label_separator</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">formstyle</td><td style="vertical-align:top;">:</td><td><div>bootstrap3_inline</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">generic_patterns</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>*</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">google_analytics_id</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">headers</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">X-Powered-By</td><td style="vertical-align:top;">:</td><td><div>web2py</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">logo</td><td style="vertical-align:top;">:</td><td><div><a class="navbar-brand" id="web2py-logo"><b>urbtran</b></a></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">menu</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div><table><tr><td><div>Home</div></td></tr><tr><td><div>False</div></td></tr><tr><td><div>/urbtran/default/index</div></td></tr><tr><td><div><table></table></div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>time-people</div></td></tr><tr><td><div>False</div></td></tr><tr><td><div>/urbtran/default/graphs_time</div></td></tr><tr><td><div><table></table></div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>place-people</div></td></tr><tr><td><div>False</div></td></tr><tr><td><div>/urbtran/default/graphs_place</div></td></tr><tr><td><div><table></table></div></td></tr></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">meta</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">author</td><td style="vertical-align:top;">:</td><td><div>Your Name &lt;you@example.com&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">description</td><td style="vertical-align:top;">:</td><td><div>a cool new app</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">generator</td><td style="vertical-align:top;">:</td><td><div>Web2py Web Framework</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">keywords</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>web2py</div></td></tr><tr><td><div>python</div></td></tr><tr><td><div>framework</div></td></tr></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">models_to_run</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>^\\w+\\.py$</div></td></tr><tr><td><div>^default/\\w+\\.py$</div></td></tr><tr><td><div>^default/algo/\\w+\\.py$</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">postprocessing</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_client</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_cookie_compression_level</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_cookie_expires</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_data_name</td><td style="vertical-align:top;">:</td><td><div>session_data_urbtran</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_file</td><td style="vertical-align:top;">:</td><td><div>&lt;open file &#x27;/home/preethi/Downloads/web2py/applications/urbtran/sessions/0c9/0f6/127.0.0.1-4f3fe364-a427-4644-9feb-c0f60f95f4e0&#x27;, mode &#x27;rb+&#x27; at 0x7f56bb2fe300&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_filename</td><td style="vertical-align:top;">:</td><td><div>/home/preethi/Downloads/web2py/applications/urbtran/sessions/127.0.0.1-4f3fe364-a427-4644-9feb-c0f60f95f4e0</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_hash</td><td style="vertical-align:top;">:</td><td><div>8a1730c85426eb4e9d5cc05cb90f100c</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_id</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1-4f3fe364-a427-4644-9feb-c0f60f95f4e0</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_id_name</td><td style="vertical-align:top;">:</td><td><div>session_id_urbtran</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_locked</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_masterapp</td><td style="vertical-align:top;">:</td><td><div>urbtran</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_new</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_storage_type</td><td style="vertical-align:top;">:</td><td><div>file</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">status</td><td style="vertical-align:top;">:</td><td><div>200</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">subtitle</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">title</td><td style="vertical-align:top;">:</td><td><div>Urbtran</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">view</td><td style="vertical-align:top;">:</td><td><div>default/algo.html</div></td></tr></table></div>'
+tRp303
+sS'locals'
+p304
+(dp305
+S'obj'
+p306
+S"'8_00AM-9_00AM'"
+p307
+sS'self'
+p308
+S'<pydal.adapters.sqlite.SQLiteAdapter object>'
+p309
+sS'field_is_type'
+p310
+S'<built-in method startswith of str object>'
+p311
+sS'r'
+S'None'
+p312
+sS'fieldtype'
+p313
+S"'integer'"
+p314
+sssS'traceback'
+p315
+S'Traceback (most recent call last):\n  File "/home/preethi/Downloads/web2py/gluon/restricted.py", line 227, in restricted\n    exec ccode in environment\n  File "/home/preethi/Downloads/web2py/applications/urbtran/controllers/default.py", line 296, in <module>\n  File "/home/preethi/Downloads/web2py/gluon/globals.py", line 417, in <lambda>\n    self._caller = lambda f: f()\n  File "/home/preethi/Downloads/web2py/applications/urbtran/controllers/default.py", line 231, in algo\n    db.details.insert(name = name_, email_id=email_ , destination = destination_, date_ = date1 , slot = slot_ )\n  File "/home/preethi/Downloads/web2py/gluon/packages/dal/pydal/objects.py", line 726, in insert\n    ret = self._db._adapter.insert(self, self._listify(fields))\n  File "/home/preethi/Downloads/web2py/gluon/packages/dal/pydal/adapters/base.py", line 739, in insert\n    query = self._insert(table,fields)\n  File "/home/preethi/Downloads/web2py/gluon/packages/dal/pydal/adapters/base.py", line 730, in _insert\n    values = \',\'.join(self.expand(v, f.type) for f, v in fields)\n  File "/home/preethi/Downloads/web2py/gluon/packages/dal/pydal/adapters/base.py", line 730, in <genexpr>\n    values = \',\'.join(self.expand(v, f.type) for f, v in fields)\n  File "/home/preethi/Downloads/web2py/gluon/packages/dal/pydal/adapters/base.py", line 962, in expand\n    rv = self.represent(expression, field_type)\n  File "/home/preethi/Downloads/web2py/gluon/packages/dal/pydal/adapters/base.py", line 1435, in represent\n    return str(long(obj))\nValueError: invalid literal for long() with base 10: \'8_00AM-9_00AM\'\n'
+p316
+s.

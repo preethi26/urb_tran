@@ -27,6 +27,26 @@
   </head>
   <body>
     <div id="curve_chart" style="width: 900px; height: 500px"></div>
-      {{=data}}
+      <div >
+      
+       <table class="table table-bordered">
+      <tr>
+        <th>Slot</th>
+        <th>People</th>
+        <th>Status</th>
+
+
+      </tr><br><br><br>
+    {{for item in rows1:}}
+      <tr>
+          <td>{{=item.slot}}</td>
+          <td>{{=item.people}}</td>
+          <td>{{=item.status}}</td>
+
+
+      </tr>
+    {{pass}}
+          </table>  </div>
   </body>
+    
 </html>

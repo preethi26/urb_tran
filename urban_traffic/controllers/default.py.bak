@@ -1,8 +1,8 @@
 import json
-
+import datetime
 def index():
     form=SQLFORM.factory(Field('date','date'),
-                    Field('place','string',requires =IS_IN_SET('Chennai' , 'Tirupathi','Nellore' ,'Gudur' , 'Sri Kalahasti' ) ))
+                    Field('place','string',requires =IS_IN_SET(['Chennai' , 'Tirupathi','Nellore' ,'Gudur' , 'Sri Kalahasti'] ) ))
     if form.process().accepted:
         redirect(URL('schedule', vars=dict( a=form.vars.date, b = form.vars.place )  ))
         
@@ -178,7 +178,7 @@ def schedule():
         a = str(a).strip('L')
         row.people = int(a)
         data[row.slot][1] = data[row.slot][1] + row.people
-    
+    rows1 = db(db.schedule.destination ==place and db.schedule.date_ == date ).select(orderby = db.schedule.slot)
     print data
     return locals()
 
@@ -193,36 +193,42 @@ def algo():
     slot_ = request.args(4)
     destination_ = request.args(5)
     
+    slot_.replace("_",":")
+    print "^^^^^^^^^",slot_
+
     slot_strip = slot_.split('-')[0]
     
-    if(slot_strip) == '8:AM':
+    if slot_strip == '8_00AM':
         slot_ = 1
-    if(slot_strip) == '9:AM':
+    if(slot_strip) == '9:00AM':
         slot_ = 1
-    if(slot_strip) == '10:AM':
+    if(slot_strip) == '10:00AM':
         slot_ = 2
-    if(slot_strip) == '11:AM':
+    if(slot_strip) == '11:00AM':
         slot_ = 3
-    if(slot_strip) == '12:PM':
+    if(slot_strip) == '12:00PM':
         slot_ = 4
-    if(slot_strip) == '1:PM':
+    if(slot_strip) == '1:00PM':
         slot_ = 5
-    if(slot_strip) == '2:PM':
+    if(slot_strip) == '2:00PM':
         slot_ = 6
-    if(slot_strip) == '3:PM':
+    if(slot_strip) == '3:00PM':
         slot_ = 7
-    if(slot_strip) == '4:PM':
+    if(slot_strip) == '4:00PM':
         slot_ = 8
-    if(slot_strip) == '5:PM':
+    if(slot_strip) == '5:00PM':
         slot_ = 9
-    if(slot_strip) == '6:PM':
+    if(slot_strip) == '6:00PM':
         slot_ = 10
-    if(slot_strip) == '7:PM':
+    if(slot_strip) == '7:00PM':
         slot_ = 11
-    if(slot_strip) == '8:PM':
+    if(slot_strip) == '8:00PM':
         slot_ = 12
+    
+    date1 = date1.split('-')
+    date1 = datetime.date(int(date1[0]), int(date1[1]),int(date1[2]))
 
- 
+   
     db.details.insert(name = name_, email_id=email_ , destination = destination_, date_ = date1 , slot = slot_ )
 
     rows1 = db(db.schedule.destination==destination_).select()
@@ -286,4 +292,4 @@ def algo():
 
 
 
-    return json.dump({"string": string})
+    return locals()
