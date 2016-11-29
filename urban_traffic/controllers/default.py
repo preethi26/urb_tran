@@ -1,3 +1,5 @@
+import json
+
 def index():
     form=SQLFORM.factory(Field('date','date'),
                     Field('place','string',requires =IS_IN_DB( db, 'details.destination' ) ))
@@ -218,6 +220,7 @@ def algo():
                     string = "your request has been processed successfully. you can board the bus in slot:" + str(slot_) + "to" + str(destination_) + "but the bus still needs " + str(10 - row.people + number_) + "people to get confirmed"
                 if (row.people + number_ >= 10):
                     db(db.schedule.id == row.id).update(status ='confirmed' )
+                    db(db.schedule.id == row.id).update(people = row.people+number_ )
                     string = "your request has been processed successfully. you can board the bus in slot:" + str(slot_) + "to" + str(destination_)
                 flag=1
                 break
@@ -242,4 +245,4 @@ def algo():
 
 
 
-    return locals()
+    return json.dump({"string": string})
