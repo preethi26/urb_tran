@@ -396,3 +396,7 @@
 [2016-11-29 10:56:35] EDIT urban_traffic/views/default/graphs_time.html: -1
 [2016-11-29 10:57:39] EDIT urban_traffic/controllers/default.py: 1
 [2016-11-29 10:58:19] EDIT urban_traffic/models/menu.py: 0
+[2016-11-29 11:20:48] EDIT urban_traffic_new/controllers/default.py: 0
+[2016-11-29 11:24:03] EDIT urban_traffic_new/controllers/default.py: -1
+[2016-11-29 11:24:21] EDIT urban_traffic_new/controllers/default.py: 0
+[2016-11-29 11:25:47] EDIT urban_traffic_new/controllers/default.py: 0
