@@ -190,6 +190,7 @@ def algo():
         
     rows = db(db.schedule.destination == destination_ and db.schedule.date_==date1 and db.schedule.slot==slot_ ).select()
     for row in rows:
+        number_ = int(number_)
         if (row.status =='confirmed' and row.people + number_ <=30) :
             db(db.schedule.id == row.id ).update(people = row.people+number_)
             string = "your request has been processed successfully. you can board the bus in slot:" + str(slot_) + "to" + str(destination_)
@@ -198,7 +199,7 @@ def algo():
         elif (row.status == 'pending' ):
             if (row.people + number_ < 10):
                 db(db.schedule.id == row.id).update(people = row.people+number_ )
-                string = "your request has been processed successfully. you can board the bus in slot:" + str(slot_) + "to" + str(destination_) + "but the bus still needs " + str(10 - row_number + number) + "people to get confirmed"
+                string = "your request has been processed successfully. you can board the bus in slot:" + str(slot_) + "to" + str(destination_) + "but the bus still needs " + str(10 - row.people + number_) + "people to get confirmed"
             if (row.people + number_ >= 10):
                 db(db.schedule.id == row.id).update(status ='confirmed' )
                 string = "your request has been processed successfully. you can board the bus in slot:" + str(slot_) + "to" + str(destination_)
@@ -208,7 +209,7 @@ def algo():
         elif(row.status =='confirmed' and row.people + number_ >30):
             if (number_ < 10):
                 db.schedule.insert ( destination =destination_ ,status= 'pending',date_=date1 , people=number_ , slot =slot_  )
-                string = "your request has been processed successfully. you can board the bus in slot:" + str(slot_) + "to" + str(destination_) + "but the bus still needs " + str(30 - row_number + number) + "people to get confirmed"
+                string = "your request has been processed successfully. you can board the bus in slot:" + str(slot_) + "to" + str(destination_) + "but the bus still needs " + str(30 - row.people + number_) + "people to get confirmed"
             else :
                 db.schedule.insert ( destination =destination_ ,status= 'confirmed',date_=date1 , people=number_ , slot =slot_  )
                 string = "your request has been processed successfully. you can board the bus in slot:" + str(slot_) + "to" + str(destination_)
