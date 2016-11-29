@@ -2,7 +2,7 @@ import json
 
 def index():
     form=SQLFORM.factory(Field('date','date'),
-                    Field('place','string',requires =IS_IN_DB( db, 'details.destination' ) ))
+                    Field('place','string',requires =IS_IN_SET(['Chennai' , 'Tirupathi','Nellore' ,'Gudur' , 'Sri Kalahasti'] ) ))
     if form.process().accepted:
         redirect(URL('schedule', vars=dict( a=form.vars.date, b = form.vars.place )  ))
         
@@ -168,7 +168,18 @@ def schedule():
     place = vars.b
     date = vars.a
     rows = db( db.schedule.destination == place and db.schedule.date_ == date    ).select()
+    data =[[0,0],[1,0],[2,0],[3,0],[4,0],[5,0],[6,0],[7,0],[8,0],[9,0],[10,0],[11,0],[12,0],]
+    for row in rows:
+        a = row.slot
+        a = str(a).strip('L')
+        row.slot = int(a)
+        
+        a = row.people
+        a = str(a).strip('L')
+        row.people = int(a)
+        data[row.slot][1] = data[row.slot][1] + row.people
     
+    print data
     return locals()
 
 def algo():
@@ -181,7 +192,37 @@ def algo():
     date1 = request.args(3)
     slot_ = request.args(4)
     destination_ = request.args(5)
+    
+    slot_strip = slot_.split('-')[0]
+    
+    if(slot_strip) == '8:AM':
+        slot_ = 1
+    if(slot_strip) == '9:AM':
+        slot_ = 1
+    if(slot_strip) == '10:AM':
+        slot_ = 2
+    if(slot_strip) == '11:AM':
+        slot_ = 3
+    if(slot_strip) == '12:PM':
+        slot_ = 4
+    if(slot_strip) == '1:PM':
+        slot_ = 5
+    if(slot_strip) == '2:PM':
+        slot_ = 6
+    if(slot_strip) == '3:PM':
+        slot_ = 7
+    if(slot_strip) == '4:PM':
+        slot_ = 8
+    if(slot_strip) == '5:PM':
+        slot_ = 9
+    if(slot_strip) == '6:PM':
+        slot_ = 10
+    if(slot_strip) == '7:PM':
+        slot_ = 11
+    if(slot_strip) == '8:PM':
+        slot_ = 12
 
+ 
     db.details.insert(name = name_, email_id=email_ , destination = destination_, date_ = date1 , slot = slot_ )
 
     rows1 = db(db.schedule.destination==destination_).select()
